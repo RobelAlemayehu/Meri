@@ -7,7 +7,7 @@ import Admin from "../models/Admin.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { generateToken } from "../utils/generateToken.js";
-import { sendSuperadminInviteEmail } from "../services/emailService.js";
+import { sendSuperadminInviteEmail, sendSuperadminRejectionEmail } from "../services/emailService.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const UPLOAD_ROOT = path.join(__dirname, "..", "uploads", "applications");
@@ -37,6 +37,13 @@ export const submitApplication = asyncHandler(async (req, res) => {
     throw new AppError("An account already exists with this email", 400);
   }
 
+  // Clean up any expired approved records for this email so they don't block resubmission
+  await SuperadminApplication.deleteMany({
+    email: emailNorm,
+    status: "approved",
+    inviteExpiresAt: { $lte: new Date() },
+  });
+
   const pending = await SuperadminApplication.findOne({
     email: emailNorm,
     status: "pending",
@@ -45,16 +52,28 @@ export const submitApplication = asyncHandler(async (req, res) => {
     throw new AppError("You already have a pending application with this email", 400);
   }
 
+  // If a previous submission already generated a token, resend it instead of blocking
   const openInvite = await SuperadminApplication.findOne({
     email: emailNorm,
     status: "approved",
     inviteExpiresAt: { $gt: new Date() },
   });
   if (openInvite) {
-    throw new AppError(
-      "This email already has an approved invite. Check your email or complete registration.",
-      400
-    );
+    const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+    const registrationLink = `${clientUrl}/superadmin/register-invite?token=${openInvite.inviteToken}`;
+    const emailResult = await sendSuperadminInviteEmail({
+      to: emailNorm,
+      fullName: openInvite.fullName,
+      organizationName: openInvite.organizationName,
+      registrationLink,
+      inviteToken: openInvite.inviteToken,
+    }).catch((err) => ({ sent: false, error: err.message }));
+    return res.status(200).json({
+      message: emailResult.sent
+        ? "A registration link has already been issued and was resent to your email."
+        : `A registration link was already issued. Check your spam folder or use this token to register: ${openInvite.inviteToken}`,
+      id: openInvite._id,
+    });
   }
 
   const appDoc = await SuperadminApplication.create({
@@ -81,29 +100,79 @@ export const submitApplication = asyncHandler(async (req, res) => {
   }
 
   appDoc.legalDocuments = legalDocuments;
+
+  // Auto-approve: generate invite token immediately and email the applicant
+  const inviteToken = crypto.randomBytes(32).toString("hex");
+  const days = Number(process.env.SUPERADMIN_INVITE_EXPIRY_DAYS) || 14;
+  appDoc.status = "approved";
+  appDoc.inviteToken = inviteToken;
+  appDoc.inviteExpiresAt = new Date(Date.now() + days * 864e5);
+  appDoc.reviewedAt = new Date();
+
   await appDoc.save();
 
+  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+  const registrationLink = `${clientUrl}/superadmin/register-invite?token=${inviteToken}`;
+
+  const emailResult = await sendSuperadminInviteEmail({
+    to: emailNorm,
+    fullName: fullName.trim(),
+    organizationName: organizationName.trim(),
+    registrationLink,
+    inviteToken,
+  }).catch((err) => ({ sent: false, error: err.message }));
+
+  if (!emailResult.sent) {
+    console.error("[email] Failed to send invite:", emailResult.error || "SMTP not configured");
+  }
+
   res.status(201).json({
-    message:
-      "Application received. A superadmin will review it. If approved, you will get an email with a link and token to finish registration.",
+    message: emailResult.sent
+      ? "Application received! A registration link has been sent to your email."
+      : "Application received! Email delivery is not configured — use the registration link below.",
     id: appDoc._id,
+    token: inviteToken,
+    registrationLink,
+    emailSent: emailResult.sent,
   });
 });
 
 export const inviteInfo = asyncHandler(async (req, res) => {
-  const token = req.query.token?.trim();
+  const token = req.query.token?.trim().replace(/\s+/g, "");
   if (!token) {
     throw new AppError("Token is required", 400);
   }
 
-  const appDoc = await SuperadminApplication.findOne({
+  // First try: exact match with status approved and not expired
+  let appDoc = await SuperadminApplication.findOne({
     inviteToken: token,
     status: "approved",
     inviteExpiresAt: { $gt: new Date() },
   }).select("fullName email organizationName inviteExpiresAt");
 
+  // Second try: token matches but maybe status is still pending (race condition)
   if (!appDoc) {
-    throw new AppError("Invalid or expired invitation", 400);
+    appDoc = await SuperadminApplication.findOne({
+      inviteToken: token,
+      inviteExpiresAt: { $gt: new Date() },
+    }).select("fullName email organizationName inviteExpiresAt status");
+
+    if (appDoc && appDoc.status !== "approved") {
+      throw new AppError(`Invitation status is "${appDoc.status}" — cannot register.`, 400);
+    }
+  }
+
+  if (!appDoc) {
+    // Help debug: check if token exists at all (expired or wrong status)
+    const anyMatch = await SuperadminApplication.findOne({ inviteToken: token }).select("status inviteExpiresAt").lean();
+    if (anyMatch) {
+      const expired = anyMatch.inviteExpiresAt && anyMatch.inviteExpiresAt < new Date();
+      throw new AppError(
+        expired ? "This invitation link has expired. Please submit a new application." : `Invitation status is "${anyMatch.status}" — already registered or rejected.`,
+        400
+      );
+    }
+    throw new AppError("Invalid invitation token. Make sure you copied the full link from the email.", 400);
   }
 
   res.json({
@@ -116,7 +185,9 @@ export const inviteInfo = asyncHandler(async (req, res) => {
 
 export const completeInviteRegistration = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
-  if (!token?.trim() || !password) {
+  const cleanToken = token?.trim().replace(/\s+/g, "");
+
+  if (!cleanToken || !password) {
     throw new AppError("Token and password are required", 400);
   }
   if (password.length < 6) {
@@ -124,13 +195,21 @@ export const completeInviteRegistration = asyncHandler(async (req, res) => {
   }
 
   const appDoc = await SuperadminApplication.findOne({
-    inviteToken: token.trim(),
+    inviteToken: cleanToken,
     status: "approved",
     inviteExpiresAt: { $gt: new Date() },
   });
 
   if (!appDoc) {
-    throw new AppError("Invalid or expired invitation", 400);
+    const anyMatch = await SuperadminApplication.findOne({ inviteToken: cleanToken }).select("status inviteExpiresAt").lean();
+    if (anyMatch) {
+      const expired = anyMatch.inviteExpiresAt && anyMatch.inviteExpiresAt < new Date();
+      throw new AppError(
+        expired ? "This invitation has expired. Please submit a new application." : `Cannot register — invitation status is "${anyMatch.status}".`,
+        400
+      );
+    }
+    throw new AppError("Invalid invitation token. Make sure you copied the full token from the email.", 400);
   }
 
   const existing = await Admin.findOne({ email: appDoc.email });
@@ -192,10 +271,7 @@ export const approveApplication = asyncHandler(async (req, res) => {
   appDoc.rejectionReason = "";
   await appDoc.save();
 
-  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(
-    /\/$/,
-    ""
-  );
+  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
   const registrationLink = `${clientUrl}/superadmin/register-invite?token=${inviteToken}`;
 
   await sendSuperadminInviteEmail({
@@ -207,8 +283,7 @@ export const approveApplication = asyncHandler(async (req, res) => {
   });
 
   res.json({
-    message:
-      "Approved. A registration link and token were sent to the applicant by email (check server logs if SMTP is not configured).",
+    message: "Approved. A registration link has been sent to the applicant's email.",
   });
 });
 
@@ -225,7 +300,14 @@ export const rejectApplication = asyncHandler(async (req, res) => {
   appDoc.rejectionReason = reason?.trim() || "";
   await appDoc.save();
 
-  res.json({ message: "Application rejected." });
+  await sendSuperadminRejectionEmail({
+    to: appDoc.email,
+    fullName: appDoc.fullName,
+    organizationName: appDoc.organizationName,
+    reason: reason?.trim() || "",
+  });
+
+  res.json({ message: "Application rejected and email sent to applicant." });
 });
 
 export const downloadApplicationFile = asyncHandler(async (req, res) => {

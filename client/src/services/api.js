@@ -40,7 +40,6 @@ export const api = {
   superadminAssign: (compoundId, adminId) =>
     client.put(`/api/superadmin/compounds/${compoundId}/assign`, { adminId }),
 
-  /** Multipart; do not set Content-Type manually */
   submitSuperadminApplication: async (formData) => {
     const res = await fetch("/api/superadmin/applications", {
       method: "POST",

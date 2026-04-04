@@ -20,9 +20,11 @@ export default function SuperadminDashboard() {
   const [newAdminName, setNewAdminName] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [newAdminCompoundId, setNewAdminCompoundId] = useState("");
   const [assignCompoundId, setAssignCompoundId] = useState("");
   const [assignAdminId, setAssignAdminId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
 
   async function load() {
     setError("");
@@ -68,15 +70,19 @@ export default function SuperadminDashboard() {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setStatus("");
     try {
-      await api.superadminCreateAdmin({
+      const res = await api.superadminCreateAdmin({
         name: newAdminName.trim(),
         email: newAdminEmail.trim(),
         password: newAdminPassword,
+        compoundId: newAdminCompoundId || undefined,
       });
+      setStatus(res.data.message || "Admin created and credentials sent!");
       setNewAdminName("");
       setNewAdminEmail("");
       setNewAdminPassword("");
+      setNewAdminCompoundId("");
       await load();
     } catch (err) {
       setError(err.response?.data?.message || "Could not create admin");
@@ -291,13 +297,19 @@ export default function SuperadminDashboard() {
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 font-medium text-slate-900">
+          <h2 className="mb-1 flex items-center gap-2 font-medium text-slate-900">
             <UserPlus className="h-5 w-5 text-emerald-600" />
-            New branch admin
+            Add branch admin
           </h2>
+          <p className="mb-4 text-xs text-slate-500">Credentials will be emailed to the admin automatically.</p>
+          {status && (
+            <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              {status}
+            </div>
+          )}
           <form onSubmit={createAdmin} className="space-y-3">
             <input
-              placeholder="Name"
+              placeholder="Admin name"
               value={newAdminName}
               onChange={(e) => setNewAdminName(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
@@ -305,7 +317,7 @@ export default function SuperadminDashboard() {
             />
             <input
               type="email"
-              placeholder="Email"
+              placeholder="Admin email"
               value={newAdminEmail}
               onChange={(e) => setNewAdminEmail(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
@@ -320,12 +332,22 @@ export default function SuperadminDashboard() {
               required
               minLength={6}
             />
+            <select
+              value={newAdminCompoundId}
+              onChange={(e) => setNewAdminCompoundId(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+            >
+              <option value="">Assign to compound (optional)</option>
+              {compounds.map((c) => (
+                <option key={c._id} value={c._id}>{c.name}</option>
+              ))}
+            </select>
             <button
               type="submit"
               disabled={busy}
               className="w-full rounded-xl bg-emerald-600 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50"
             >
-              Create admin
+              {busy ? "Creating…" : "Create & send credentials"}
             </button>
           </form>
         </section>

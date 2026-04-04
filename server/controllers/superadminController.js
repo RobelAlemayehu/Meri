@@ -3,6 +3,7 @@ import Compound from "../models/Compound.js";
 import { generateToken } from "../utils/generateToken.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
+import { sendAdminCredentialsEmail } from "../services/emailService.js";
 
 /**
  * One-time (or keyed) bootstrap: create first superadmin when SUPERADMIN_SETUP_KEY matches.
@@ -72,30 +73,59 @@ export const listBranchAdmins = asyncHandler(async (req, res) => {
 });
 
 export const createBranchAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, compoundId } = req.body;
 
   if (!name?.trim() || !email?.trim() || !password) {
-    throw new AppError("Please provide name, email, and password", 400);
+    throw new AppError("Name, email, and password are required", 400);
   }
-
   if (password.length < 6) {
     throw new AppError("Password must be at least 6 characters", 400);
   }
 
+  const emailNorm = email.trim().toLowerCase();
+  const existing = await Admin.findOne({ email: emailNorm });
+  if (existing) throw new AppError("An admin with this email already exists", 400);
+
   const admin = await Admin.create({
     name: name.trim(),
-    email: email.trim().toLowerCase(),
+    email: emailNorm,
     password,
     role: "admin",
+    status: "active",
   });
 
+  // Assign compound if provided
+  let compoundName = "your assigned branch";
+  if (compoundId) {
+    const compound = await Compound.findById(compoundId);
+    if (compound) {
+      compound.assignedAdmin = admin._id;
+      await compound.save();
+      compoundName = compound.name;
+    }
+  }
+
+  const loginUrl = `${(process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "")}/staff/login`;
+
+  const emailResult = await sendAdminCredentialsEmail({
+    to: emailNorm,
+    adminName: name.trim(),
+    compoundName,
+    invitedBy: req.admin.name,
+    password,
+    loginUrl,
+  }).catch((err) => ({ sent: false, error: err.message }));
+
+  if (!emailResult.sent) {
+    console.error("[email] Failed to send admin credentials:", emailResult.error || "SMTP not configured");
+  }
+
   res.status(201).json({
-    admin: {
-      id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-    },
+    message: emailResult.sent
+      ? `Admin created and credentials sent to ${emailNorm}.`
+      : `Admin created. Email failed — share credentials manually. Password: ${password}`,
+    admin: { id: admin._id, name: admin.name, email: admin.email, role: admin.role },
+    emailSent: emailResult.sent,
   });
 });
 

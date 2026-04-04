@@ -8,7 +8,7 @@ export default function SuperadminInviteRegisterPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { refresh } = useAuth();
-  const [token, setToken] = useState(() => searchParams.get("token") || "");
+  const [token, setToken] = useState(() => searchParams.get("token")?.trim().replace(/\s+/g, "") || "");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [info, setInfo] = useState(null);
@@ -17,7 +17,7 @@ export default function SuperadminInviteRegisterPage() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    const t = searchParams.get("token")?.trim();
+    const t = searchParams.get("token")?.trim().replace(/\s+/g, "");
     if (!t) {
       setInfoError("Open the link from your approval email, or paste the token below.");
       return;
@@ -116,7 +116,7 @@ export default function SuperadminInviteRegisterPage() {
             </label>
             <textarea
               value={token}
-              onChange={(e) => setToken(e.target.value)}
+              onChange={(e) => setToken(e.target.value.trim().replace(/\s+/g, ""))}
               rows={2}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 outline-none ring-violet-500 focus:ring-2"
               placeholder="Paste token if the link did not fill it"

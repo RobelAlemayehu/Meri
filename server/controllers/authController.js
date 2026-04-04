@@ -64,14 +64,10 @@ export const loginAdmin = asyncHandler(async (req, res) => {
   }
 
   const admin = await Admin.findOne({ email: email.trim().toLowerCase() });
-  if (!admin) {
-    throw new AppError("Invalid email or password", 401);
-  }
+  if (!admin) throw new AppError("Invalid email or password", 401);
 
   const ok = await admin.comparePassword(password);
-  if (!ok) {
-    throw new AppError("Invalid email or password", 401);
-  }
+  if (!ok) throw new AppError("Invalid email or password", 401);
 
   const token = generateToken(admin._id);
 

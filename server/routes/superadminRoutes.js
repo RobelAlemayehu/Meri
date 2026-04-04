@@ -21,15 +21,13 @@ import {
 
 const router = Router();
 
+// Public routes
 router.post("/setup", registerSuperadmin);
-router.post(
-  "/applications",
-  applicationUpload.array("legalDocuments", 5),
-  submitApplication
-);
+router.post("/applications", applicationUpload.array("legalDocuments", 5), submitApplication);
 router.get("/invite/info", inviteInfo);
 router.post("/invite/complete", completeInviteRegistration);
 
+// Protected superadmin routes
 router.use(protect, requireSuperadmin);
 
 router.get("/compounds", listSuperadminCompounds);

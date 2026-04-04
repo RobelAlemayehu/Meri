@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import SuperadminSetupPage from "./pages/SuperadminSetupPage";
 import SuperadminApplyPage from "./pages/SuperadminApplyPage";
 import SuperadminInviteRegisterPage from "./pages/SuperadminInviteRegisterPage";
+import AdminInviteRegisterPage from "./pages/AdminInviteRegisterPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import SuperadminDashboard from "./pages/SuperadminDashboard";
 
@@ -20,10 +21,8 @@ export default function App() {
           <Route path="/login" element={<Navigate to="/staff/login" replace />} />
           <Route path="/staff/login" element={<LoginPage />} />
           <Route path="/setup" element={<SuperadminSetupPage />} />
-          <Route
-            path="/superadmin/register-invite"
-            element={<SuperadminInviteRegisterPage />}
-          />
+          <Route path="/superadmin/register-invite" element={<SuperadminInviteRegisterPage />} />
+          <Route path="/admin/accept-invite" element={<AdminInviteRegisterPage />} />
 
           <Route element={<GuestLayout />}>
             <Route path="/navigate" element={<LandingPage />} />

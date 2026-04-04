@@ -10,6 +10,7 @@ export default function SuperadminApplyPage() {
   const [files, setFiles] = useState([]);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [doneData, setDoneData] = useState(null);
   const [pending, setPending] = useState(false);
 
   function onFilesChange(e) {
@@ -31,7 +32,8 @@ export default function SuperadminApplyPage() {
       formData.append("email", email.trim());
       formData.append("organizationName", organizationName.trim());
       files.forEach((f) => formData.append("legalDocuments", f));
-      await api.submitSuperadminApplication(formData);
+      const result = await api.submitSuperadminApplication(formData);
+      setDoneData(result);
       setDone(true);
     } catch (err) {
       setError(err.message || "Could not submit application");
@@ -41,19 +43,54 @@ export default function SuperadminApplyPage() {
   }
 
   if (done) {
+    const emailSent = doneData?.emailSent;
+    const regLink = doneData?.registrationLink;
+    const token = doneData?.token;
+
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
           <Shield className="h-6 w-6" />
         </div>
         <h1 className="mt-4 text-xl font-semibold text-slate-900">
-          Application sent
+          Application received!
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          A superadmin will review your organization and documents. If approved,
-          you&apos;ll get an email with a registration link and a one-time token
-          to create your account.
-        </p>
+
+        {emailSent ? (
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            A registration link has been sent to <strong>{email}</strong>.
+            Open it to set your password and activate your SuperAdmin account.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Use the link below to complete your registration and activate your SuperAdmin account.
+          </p>
+        )}
+
+        {regLink && (
+          <div className="mt-5 rounded-xl border border-violet-200 bg-violet-50 p-4 space-y-3">
+            <p className="text-xs font-semibold text-violet-900">Your registration link:</p>
+            <a
+              href={regLink}
+              className="block w-full rounded-lg bg-violet-600 py-2.5 text-center text-sm font-semibold text-white shadow hover:bg-violet-500"
+            >
+              Complete Registration →
+            </a>
+            <details className="text-xs text-slate-500">
+              <summary className="cursor-pointer hover:text-slate-700">Show token (for manual entry)</summary>
+              <code className="mt-2 block break-all rounded bg-white px-3 py-2 text-xs text-slate-800 ring-1 ring-violet-200">
+                {token}
+              </code>
+            </details>
+          </div>
+        )}
+
+        {emailSent && (
+          <p className="mt-3 text-xs text-slate-500">
+            Didn&apos;t receive it? Check your spam folder. The link expires in 14 days.
+          </p>
+        )}
+
         <Link
           to="/navigate"
           className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
@@ -84,8 +121,9 @@ export default function SuperadminApplyPage() {
               Superadmin access
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Request an account for your organization. Upload legal proof; after
-              approval you&apos;ll receive an email to finish signup.
+              Submit your organization details and legal proof. A registration
+              link will be sent to your email immediately so you can finish
+              signup.
             </p>
           </div>
         </div>
