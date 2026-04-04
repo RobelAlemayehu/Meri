@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8eef5"/>
+      <stop offset="100%" style="stop-color:#fef3c7"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="480" height="360" rx="24" fill="url(#g)"/>
+  <g opacity="0.35" stroke="#0c1524" stroke-width="0.8">
+    <path d="M40 80h400M40 160h400M40 240h400M80 40v280M200 40v280M320 40v280"/>
+  </g>
+  <path d="M100 260 Q180 200 240 140 T420 100" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" fill="none" filter="url(#s)"/>
+  <circle cx="100" cy="260" r="14" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
+  <circle cx="420" cy="100" r="16" fill="#a855f7" stroke="#fff" stroke-width="3"/>
+  <rect x="300" y="200" width="100" height="64" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="1.5" opacity="0.95"/>
+  <rect x="60" y="48" width="88" height="36" rx="8" fill="#0c1524" opacity="0.9"/>
+  <text x="104" y="72" text-anchor="middle" fill="#fbbf24" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Live</text>
+</svg>

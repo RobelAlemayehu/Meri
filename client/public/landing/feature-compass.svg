@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" aria-hidden="true">
+  <rect width="320" height="240" rx="20" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+  <circle cx="160" cy="120" r="72" fill="#fff" stroke="#fde68a" stroke-width="2"/>
+  <polygon points="160,56 172,112 160,104 148,112" fill="#b45309"/>
+  <polygon points="160,184 148,128 160,136 172,128" fill="#94a3b8"/>
+  <circle cx="160" cy="120" r="8" fill="#0c1524"/>
+  <text x="160" y="210" text-anchor="middle" fill="#78350f" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Bearing &amp; ETA</text>
+</svg>
