@@ -59,7 +59,7 @@ export const submitApplication = asyncHandler(async (req, res) => {
     inviteExpiresAt: { $gt: new Date() },
   });
   if (openInvite) {
-    const clientUrl = (process.env.CLIENT_URL || "https://meri-ten.vercel.app".replace(/\/$/, "");
+    const clientUrl = (process.env.CLIENT_URL || "https://meri-ten.vercel.app").replace(/\/$/, "");
     const registrationLink = `${clientUrl}/superadmin/register-invite?token=${openInvite.inviteToken}`;
     const emailResult = await sendSuperadminInviteEmail({
       to: emailNorm,
