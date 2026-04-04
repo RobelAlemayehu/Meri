@@ -105,7 +105,7 @@ export const createBranchAdmin = asyncHandler(async (req, res) => {
     }
   }
 
-  const loginUrl = `${(process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "")}/staff/login`;
+  const loginUrl = `${(process.env.CLIENT_URL || "https://meri-ten.vercel.app").replace(/\/$/, "")}/staff/login`;
 
   const emailResult = await sendAdminCredentialsEmail({
     to: emailNorm,
