@@ -59,7 +59,7 @@ export const submitApplication = asyncHandler(async (req, res) => {
     inviteExpiresAt: { $gt: new Date() },
   });
   if (openInvite) {
-    const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+    const clientUrl = (process.env.CLIENT_URL || "https://meri-ten.vercel.app".replace(/\/$/, "");
     const registrationLink = `${clientUrl}/superadmin/register-invite?token=${openInvite.inviteToken}`;
     const emailResult = await sendSuperadminInviteEmail({
       to: emailNorm,
@@ -111,7 +111,7 @@ export const submitApplication = asyncHandler(async (req, res) => {
 
   await appDoc.save();
 
-  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+  const clientUrl = (process.env.CLIENT_URL || "https://meri-ten.vercel.app").replace(/\/$/, "");
   const registrationLink = `${clientUrl}/superadmin/register-invite?token=${inviteToken}`;
 
   const emailResult = await sendSuperadminInviteEmail({
@@ -271,7 +271,7 @@ export const approveApplication = asyncHandler(async (req, res) => {
   appDoc.rejectionReason = "";
   await appDoc.save();
 
-  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+  const clientUrl = (process.env.CLIENT_URL || "https://meri-ten.vercel.app").replace(/\/$/, "");
   const registrationLink = `${clientUrl}/superadmin/register-invite?token=${inviteToken}`;
 
   await sendSuperadminInviteEmail({
