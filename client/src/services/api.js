@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const client = axios.create({
-  baseURL: "",
+  baseURL: import.meta.env.VITE_API_URL ?? "",
   headers: { "Content-Type": "application/json" },
 });
 
@@ -41,7 +41,7 @@ export const api = {
     client.put(`/api/superadmin/compounds/${compoundId}/assign`, { adminId }),
 
   submitSuperadminApplication: async (formData) => {
-    const res = await fetch("/api/superadmin/applications", {
+    const res = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/superadmin/applications`, {
       method: "POST",
       body: formData,
     });
@@ -69,7 +69,7 @@ export const api = {
   async downloadSuperadminApplicationFile(appId, storedName, downloadName) {
     const token = localStorage.getItem("token");
     const res = await fetch(
-      `/api/superadmin/applications/${appId}/files/${encodeURIComponent(storedName)}`,
+      `${import.meta.env.VITE_API_URL ?? ""}/api/superadmin/applications/${appId}/files/${encodeURIComponent(storedName)}`,
       { headers: { Authorization: token ? `Bearer ${token}` : "" } }
     );
     if (!res.ok) {
